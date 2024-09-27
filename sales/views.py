@@ -1,50 +1,45 @@
 from rest_framework import viewsets
-from patients.models import Patient
-from patients.serializers import PatientSerializer
-from django.shortcuts import render, redirect
-from sales.models import Sale
+from rest_framework.response import Response
+from rest_framework.decorators import action
+from .models import Sale
+from .serializers import SaleSerializer
 from inventory.models import Product
-from django.contrib import messages
+import datetime
 
-class PatientViewSet(viewsets.ModelViewSet):
-    queryset = Patient.objects.all()
-    serializer_class = PatientSerializer
+class SaleViewSet(viewsets.ModelViewSet):
+    queryset = Sale.objects.all()
+    serializer_class = SaleSerializer
 
-def process_sale(request):
-    if request.method == 'POST':
-        product_id = request.POST.get('product')
-        patient_id = request.POST.get('patient')
-        quantity = int(request.POST.get('quantity'))
+    @action(detail=False, methods=['post'])
+    def process_sale(self, request):
+        # Extract sale information from request data
+        product_id = request.data.get('product_id')
+        quantity = request.data.get('quantity')
+        user_id = request.data.get('user_id')
+        customer_id = request.data.get('customer_id')
+        terminal_number = request.data.get('terminal_number')
+        
+        # Fetch the product
+        product = Product.objects.get(id=product_id)
 
-        try:
-            product = Product.objects.get(id=product_id)
-            patient = Patient.objects.get(id=patient_id)
+        # Ensure there is enough stock
+        if product.quantity >= quantity:
+            # Deduct the sold quantity from the stock
+            product.quantity -= quantity
+            product.save()
 
-            if product.quantity < quantity:
-                messages.error(request, 'Insufficient quantity in stock.')
-            else:
-                total_price = product.price * quantity
-                sale = Sale.objects.create(
-                    product=product,
-                    patient=patient,
-                    user=request.user,  # Assuming logged-in cashier
-                    quantity=quantity,
-                    total_price=total_price
-                )
-                
-                # Update product quantity
-                product.quantity -= quantity
-                product.save()
+            # Log the sale
+            sale = Sale.objects.create(
+                product=product,
+                quantity=quantity,
+                total_price=product.recommended_sell_price * quantity,
+                customer_id=customer_id,
+                terminal_number=terminal_number,
+                employee_id=user_id,
+                sale_time=datetime.now()
+            )
+            sale.save()
 
-                messages.success(request, 'Sale processed successfully!')
-                return redirect('process_sale')
-        except Product.DoesNotExist:
-            messages.error(request, 'Product not found.')
-        except Patient.DoesNotExist:
-            messages.error(request, 'Patient not found.')
-
-    # Display the form for product and patient selection
-    products = Product.objects.all()
-    patients = Patient.objects.all()
-
-    return render(request, 'process_sale.html', {'products': products, 'patients': patients})
+            return Response({'status': 'Sale processed successfully'})
+        else:
+            return Response({'status': 'Not enough stock available'}, status=400)

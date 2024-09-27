@@ -1,0 +1,67 @@
+.pos-home {
+    display: grid;
+    grid-template-areas:
+        "header header"
+        "aside main";
+    grid-template-columns: 1fr 4fr;
+    height: 100vh;
+    grid-gap: 20px;
+    padding: 20px;
+}
+
+header {
+    grid-area: header;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: #f5f5f5;
+}
+
+aside {
+    grid-area: aside;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+aside button {
+    padding: 15px;
+    font-size: 18px;
+}
+
+main {
+    grid-area: main;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.display-screen {
+    flex-grow: 1;
+    background-color: #eee;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.product-controls .row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.product-controls button {
+    padding: 15px;
+    font-size: 16px;
+}
+
+.numeric-keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.numeric-keypad button {
+    padding: 15px;
+    font-size: 20px;
+}

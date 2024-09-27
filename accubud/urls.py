@@ -1,11 +1,11 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic import RedirectView
 from rest_framework import routers
 from patients.views import PatientViewSet
-from sales.views import SalesViewSet
-from users.views import UsersViewSet
 from inventory.views import ProductViewSet
-from users.views import password_reset_request
+from sales.views import SaleViewSet
+from users.views import UserViewSet
 
 router = routers.DefaultRouter()
 router.register(r'patients', PatientViewSet)
@@ -14,9 +14,7 @@ router.register(r'sales', SaleViewSet)
 router.register(r'users', UserViewSet)
 
 urlpatterns = [
-    path('admin/', admin.site.urls),  # Admin site URLs
-    path('api/', include(router.urls)),  # API-related URLs
-    path('accounts/', include('users.urls')),  # Users app URLs
-    path('password_reset/', password_reset_request, name='password_reset'),  # Password reset
-    path('sales/', include('sales.urls')),  # Include the sales app URLs
+    path('', RedirectView.as_view(url='/admin/')),  # Redirect root to admin panel
+    path('admin/', admin.site.urls),
+    path('api/', include(router.urls)),
 ]
