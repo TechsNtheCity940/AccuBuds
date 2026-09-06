@@ -1,17 +1,44 @@
 import React, { useState, useEffect } from 'react';
 
-function POSHome({ user }) {
+const TOKEN = () => localStorage.getItem('accubuds_token') || '';
+const authHeaders = () => ({
+    'Content-Type': 'application/json',
+    Authorization: `Token ${TOKEN()}`,
+});
+
+function POSHome({ user, onSignOff }) {
     const [products, setProducts] = useState([]);
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [availableAmounts, setAvailableAmounts] = useState([]);
     const [productTypes, setProductTypes] = useState([]);
 
     useEffect(() => {
-        // Fetch products from the Django API
-        fetch('/api/products/')
-            .then(response => response.json())
-            .then(data => setProducts(data));
+        fetch('/api/products/', { headers: authHeaders() })
+            .then(r => r.json())
+            .then(data => setProducts(data))
+            .catch(err => console.error('Failed to load products', err));
     }, []);
+
+    const completeSale = async () => {
+        if (!selectedProduct) return;
+        try {
+            const res = await fetch('/api/sales/process_sale/', {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify({
+                    product_id: selectedProduct.id,
+                    patient_id: 1, // demo — patient picker is a future enhancement
+                    user_id: user.id,
+                    quantity: 1,
+                    terminal_number: user.terminalNumber,
+                }),
+            });
+            const data = await res.json();
+            alert(data.status === 'ok' ? `Sale #${data.sale_id} complete — total $${data.total}` : 'Sale failed: ' + data.detail);
+        } catch (e) {
+            alert('Network error: ' + e.message);
+        }
+    };
 
     const handleProductSelect = (product) => {
         setSelectedProduct(product);
@@ -41,7 +68,7 @@ function POSHome({ user }) {
                 <button>Reports</button>
                 <button>Products</button>
                 <button>Timeclock</button>
-                <button>Sign Off</button>
+                <button onClick={onSignOff}>Sign Off</button>
             </aside>
             <main>
                 <div className="display-screen">
@@ -69,7 +96,8 @@ function POSHome({ user }) {
                         <button disabled={!productTypes.includes('Concentrates')}>Concentrates</button>
                         <button disabled={!productTypes.includes('Edibles')}>Edibles</button>
                         <button disabled={!productTypes.includes('Cartridges')}>Cartridges</button>
-                        <button>Remove</button>
+                        <button onClick={completeSale} disabled={!selectedProduct}>Complete Sale</button>
+                <button onClick={() => setSelectedProduct(null)}>Remove</button>
                     </div>
                     <div className="row">
                         {[1, 3.5, 7, 14, 28].map(amount => (

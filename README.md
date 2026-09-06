@@ -1,71 +1,102 @@
 # AccuBuds
-# Getting Started with Create React App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A point-of-sale system for a medical-marijuana dispensary. Employees log in with a 4-digit PIN, browse inventory, ring up sales, and the system tracks stock and patients automatically.
 
-## Available Scripts
+## Stack
 
-In the project directory, you can run:
+- **Backend:** Django 5.1 + Django REST Framework, SQLite
+- **Frontend:** React (Create React App)
+- **Auth:** 4-digit employee PIN → DRF Token
 
-### `npm start`
+## Layout
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+```
+accubud/        Django project (settings, root urls)
+inventory/      Product catalog (flower, edible, concentrate, topical)
+patients/       Medical-cannabis patient records (medical card, prescription)
+sales/          Sale transactions (auto-decrements inventory)
+users/          CustomUser with login_pin field + PIN login endpoint
+frontend/       React POS UI (Login → POSHome)
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Quick start
 
-### `npm test`
+### 1. Backend (Django)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```bash
+cd /home/judge/AccuBuds
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py seed_demo --reset
+python manage.py createsuperuser   # optional, for /admin/
+python manage.py runserver 0.0.0.0:8000
+```
 
-### `npm run build`
+The API is now live at `http://localhost:8000/api/`.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### 2. Frontend (React, in a separate terminal)
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```bash
+cd /home/judge/AccuBuds/frontend
+npm install
+npm start     # http://localhost:3000, proxies /api → :8000
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Or build for production:
 
-### `npm run eject`
+```bash
+npm run build    # outputs to frontend/build/
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Then `python manage.py runserver` will serve the React build from Django's static files config.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Demo credentials (after `seed_demo`)
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+| Username     | Password  | PIN  | Role        |
+|--------------|-----------|------|-------------|
+| techjuan     | demo1234  | 1234 | Owner       |
+| manager      | demo1234  | 9999 | Manager     |
+| budtender1   | demo1234  | 0420 | Budtender   |
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## API endpoints
 
-## Learn More
+| Method | Path                              | Purpose                          |
+|--------|-----------------------------------|----------------------------------|
+| POST   | `/api/login/`                     | Employee PIN login → returns DRF token |
+| POST   | `/api/logout/`                    | Invalidate a token               |
+| POST   | `/api/token/`                     | Username/password → token (alt)  |
+| GET    | `/api/products/`                  | List products                    |
+| POST   | `/api/sales/process_sale/`        | Atomic sale: validates stock, decrements inventory, logs sale |
+| GET    | `/api/patients/`                  | List patients                    |
+| GET    | `/api/users/`                     | List users                       |
+| GET    | `/admin/`                         | Django admin (back office)       |
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### Sample login
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```bash
+curl -X POST http://localhost:8000/api/login/ \
+    -H 'Content-Type: application/json' \
+    -d '{"pin": "1234", "terminal": "420"}'
+# → {"token":"...","user_id":1,"username":"techjuan","terminal":"420"}
+```
 
-### Code Splitting
+### Sample sale
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+```bash
+TOKEN=...
+curl -X POST http://localhost:8000/api/sales/process_sale/ \
+    -H "Authorization: Token $TOKEN" \
+    -H 'Content-Type: application/json' \
+    -d '{"product_id":1,"patient_id":1,"user_id":1,"quantity":1,"terminal_number":"420"}'
+```
 
-### Analyzing the Bundle Size
+## What's intentionally minimal
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+- Single dispensary / no multi-location tenancy yet
+- No payment processor integration (the "Credit Card / Gift Card / Fast Cash" buttons are UI stubs)
+- No receipt printing
+- The patient picker in the POS UI is hardcoded to patient id 1 — a real picker is a follow-up
 
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+See the commit history for the original Create React App scaffolding that was used as the starting point.
